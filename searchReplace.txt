@@ -1,0 +1,43 @@
+class User < ActiveRecord::Base
+
+  hobo_model
+  
+  # fields do
+  # ...
+  # end
+
+  # fields do ... end
+  
+  fields do
+    # ...
+  end
+
+  # belongs_to :x
+  belongs_to :x
+
+
+  # has_many :x,
+  #         :through => y,
+  #         :limit => 3
+
+  
+  has_many :x,
+           :through => y,
+           :limit => 3
+
+                     
+end
+
+
+Recipe:
+-------
+scan each line, if '#' before first non-whitespace character, ignore line
+if line matches /fields(.|\s)[^#]*?do/ comment this line and each line after until find line with ' end'
+insert generated fields block
+
+if line matches /has_many(.|\s)[^#]*?:/ comment this line and each line after until find line with only whitespace (or empty line)
+
+insert all generated has_many blocks
+
+
+

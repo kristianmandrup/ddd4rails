@@ -1,0 +1,267 @@
+// control the execution of code refactoring
+execution : {
+	// skip everything for user
+	skip: ['user'],
+	models: {
+		// modes: (applies for all artifact types)
+		//  - extend_custom : generated model class extends Customized{Model}.rb where user applies any customizations
+		//  - single: generated code is attempted merged in existing model class
+		mode: 'extend_custom',
+		// skip model creation for album
+		skip: ['album'],
+		on_exist: 'overwrite',
+		user: {
+			status: "done" // perform			
+		},
+		project: {
+			status: 'in progress', // don't change .rb model class until status:done
+			comment: {'expected done by dec. 1', author: 'Kristian M', date: '1-9-2009'}
+		},
+		album: {
+			
+		}
+		
+	},
+	// default status is 'done' 
+	relations: {
+		on_exist: 'comment',		
+		status: 'done'
+	},
+	named_types: {
+		status: 'done'
+	}
+}
+
+alias_list: {
+	admin: 'user.role'
+}
+
+
+// skeleton should be generated directly from model!
+actions: {
+	// creates controller and routes :resources entry
+	user: {
+		// generate default Hobo actions for rest methods
+		auto_actions: 'all',
+		// refer to alias_list
+		list_administrators // creates stub and route (list => :collection, :get)
+		
+		// The following methods should be added automatically for any membership relation!
+		
+		// :member => :get, @this = user.project_memberships
+		list_project_memberships : {page:true},
+		
+		// add => put, membership is singular => :member
+		// stub code expects params[user][project_membership][{attribute}][], adds each 		
+		add_project_membership : {
+			allow_roles: ['self', '>project_admin']
+		},
+		
+		// creates stub route: remove => delete, memberships is plural => :collection
+		// stub code expects params[user][project_membership][], deletes each by id
+		remove_project_memberships 
+		
+		// delete selected
+		// multiple => :collection
+		// stub code expects list of user ids to be removed
+		remove_users
+		
+		// update => put, :collection
+		// stub code expects list of users to be updated				
+		// params[user][][{attribute}]
+		update_users		
+		
+		// add => post, :collection
+		// stub code expects list of users to be created		
+		add_users		
+	}
+}
+
+// skeleton should be generated from model and actions!
+pages: {
+	list_project_memberships: { 
+		actions: {'add', remove: {1, 'many'}},
+		
+		// per_page_param => {project_membership}_page by convention, to avoid conflict if multiple on page, can override this here!
+		list_type: 'table',
+		pagination: {per_page: 15}
+	},
+	list_admins: {
+		// TODO: i18n labels
+		show_fields: ['name', 'subrole', {label: 'Late projects', field: '&projects_count(:late)'}],
+		list_type: 'table',
+		pagination: {per_page: 10}		
+	},
+	show_user: {
+		show_fields: ['name', 'age'],
+		actions: ['add', 'remove', 'create'] // enabling depends on user role and permission system setup 
+	},
+	create_user: {
+		show_fields: ['name', 'age'],
+		actions: ['list'] // enabling depends on user role and permission system setup 
+	}
+
+	/*
+		Hobo DRYML generated
+		<table:>
+			<data: field="name"/>
+			..
+			<data: field="&project_count(:late)"/>
+		</table>
+	*/
+},
+
+queries: {
+	recently_created_users: {alias: 'recent_users'},
+	recently_created_posters: {alias: 'recent_posters'}
+}
+
+ui: {
+	theme: 'rounded',
+	layout: {
+		align: 'center'
+		grid_layout: {	
+			top: {'logo', 'main_nav'},
+			left: {'sidebar1'},
+			center: 'page_content',
+			right: {'sidebar2'},		
+			bottom: {
+				'info', 'nav_bar'
+			}
+		}
+	}	
+	widget_set: 'extjs',
+	iconset: 'famfam',
+	
+	components: {
+		sidebar1: {
+			'top_pages': {limit: 5} // ordered list (top)
+		},
+		sidebar2: {
+			'recent_users': {limit: 3},
+			'recent_posters': {limit: 3}
+		}
+	}
+}
+
+
+
+// the domain model to use for auto-refactoring
+domain_model: {
+	models: {
+		user: {
+			// refers to named_types
+			name: 'name',
+			age: 'age'
+			behavior: {
+				'simple_captcha'
+			}
+		},
+		project: {
+			name: 'name',
+			description: 'description',
+			behavior: {
+				acts_as: ['set', 'tree', 'countable']			
+			}			
+		},
+		// join table: friend-friend
+		friends_association: {
+			status: 'friend_status',
+			acts_as: ['countable']		
+		},
+		// join table: member-project
+		project_membership: {
+			status: 'project_membership_status',
+			acts_as: ['countable']		
+		},
+		album: {
+			behavior: {
+				act_as: [{
+					'rateable', 
+					options: {
+						dimensions: ['fun', 'quality']}
+					}
+				]									
+			}
+		}
+	},
+	relations: {
+		// refers to models
+		// relations can be either: 1-1, 1-M, M-M		
+		'user': { 
+			1-1
+			belongs_to_one: ['parent': {
+					_class: 'user'
+					permissions: {
+						roles: {
+							create: ['admin'], 
+							update: ['>guest'],
+							destroy: ['admin']							
+						}
+					},
+					comment: 'user belongs to one parent'
+				}
+			],	
+			// 1-M					
+			owns_many: ['items': {
+					dependent: 'destroy',
+					comment: 'user has many items, ownership used by Hobo to set permission system rights!'								
+				}
+			],
+			// 1-M
+		  	member_of_many : [
+				'projects'
+				through: 'project_membership',
+			],
+			// M-M			
+			knows_many: ['friends': {
+					_class: 'user',
+					through: 'friends_association',
+					comment: 'user has many friends'
+				},
+			],
+		},
+		// 1-M
+		'project': {
+			has_many : ['members': {
+				_class: 'user'
+				// no need to define through again!
+			}]
+		}
+	},
+	named_types: {
+		name: {
+			type:'string',
+			constraints: {
+				'required'
+			}
+		},
+		description: {
+			type:'text',
+			constraints: {
+				size: {min: 1, max: 2000},
+				'required'
+			}
+		},
+		friend_status: {
+			type: 'enum',
+			['pending', 'accepted']
+		},		
+		project_membership_status: {
+			type: 'enum',
+			['pending', 'accepted']
+		},		
+		age: {
+			type: 'integer',
+			constraints: {
+				age: {range: {1, 65}, 'required'}
+			}
+		}
+	},
+	permissions: {
+		roles: ['guest', 'project_admin', 'admin']
+	},
+	plugins: {
+		
+	}		
+}

@@ -1,0 +1,33 @@
+// control the execution of code refactoring
+execution : {
+	// skip everything for user
+	skip: ['user'],
+	models: {
+		// modes: (applies for all artifact types)
+		//  - extend_custom : generated model class extends Customized{Model}.rb where user applies any customizations
+		//  - single: generated code is attempted merged in existing model class
+		mode: 'extend_custom',
+		// skip model creation for album
+		skip: ['album'],
+		on_exist: 'overwrite',
+		user: {
+			status: "done" // perform			
+		},
+		project: {
+			status: 'in progress', // don't change .rb model class until status:done
+			comment: {'expected done by dec. 1', author: 'Kristian M', date: '1-9-2009'}
+		},
+		album: {
+			
+		}
+		
+	},
+	// default status is 'done' 
+	relations: {
+		on_exist: 'comment',		
+		status: 'done'
+	},
+	named_types: {
+		status: 'done'
+	}
+}
